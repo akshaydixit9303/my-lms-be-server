@@ -1,0 +1,2 @@
+// main.js
+debug(undefined);

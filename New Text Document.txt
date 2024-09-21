@@ -1,0 +1,161 @@
+// ticket log invoice
+app.post("/send/invoice/ticket/log", async function (req, res) {
+  const {
+    mail,
+    name,
+    invoice_num,
+    order_id,
+    gst,
+    dataUri,
+    amount,
+    amount_incl_tax,
+    ticket_id,
+  } = req.body;
+
+
+  var date = new Date(); // Now
+  date.setDate(date.getDate() + 30);
+
+  // var today = new Date();
+  // var takeDate = today.setDate(today.getDate() + 30);
+  var dd = String(date.getDate()).padStart(2, "0");
+  var mm = String(date.getMonth() + 1).padStart(2, "0"); //January is 0!
+  var yyyy = date.getFullYear();
+
+  const order_id2 =
+    "ORD" +
+    generator.generate({
+      numbers: true,
+      length: 7,
+      uppercase: true,
+      lowercase: false,
+    });
+
+  const pdfBuffer = Buffer.from(dataUri.split(",")[1], "base64");
+
+  const takeDate = yyyy + "-" + mm + "-" + dd;
+  db.query(
+    "update main_admin_db.myit_all_ticket_customers set date = ? where mail = ? and ticket_id = ?",
+    [takeDate, mail, ticket_id],
+    async (err, result) => {
+      if (err) console.log(err);
+      else {
+        db.query(
+          "select * from main_admin_db.myit_all_ticket_customers where mail = ? and ticket_id = ?",
+          [mail, ticket_id],
+          (errInvoice, resultInvoice) => {
+            if (errInvoice) console.log(errInvoice);
+            else {
+              const resultInvoice1 = resultInvoice[0];
+              db.query(
+                "select * from main_admin_db.payment_order_myit_ft where order_id = ? and payer_email = ?",
+                [order_id ? order_id : order_id2, mail],
+                (errNN, resultNN) => {
+                  if (errNN) console.log(errNN);
+                  else {
+                    if (!resultNN.length) {
+                      db.query(
+                        "insert into main_admin_db.payment_order_myit_ft(order_id,order_date,amount_incl_tax,payer_name,invoice_no,gst,payer_address,payer_email,payer_no,service,problem_remark) values(?,?,?,?,?,?,?,?,?,?,?)",
+                        [
+                          order_id ? order_id : order_id2,
+                          takeDate,
+                          amount_incl_tax,
+                          resultInvoice1.name,
+                          invoice_num,
+                          gst ? gst : "N/A",
+                          resultInvoice1.address,
+                          resultInvoice1.mail,
+                          resultInvoice1.phone,
+                          resultInvoice1.problem_type,
+                          resultInvoice1.msg,
+                        ],
+                        (err22, result22) => {
+                          if (err22) console.log(err22);
+                          else {
+                            fs.writeFileSync(
+                              `./ticket_log/${mail}_${name}.pdf`,
+                              pdfBuffer
+                            );
+                            db.query(
+                              "SELECT * FROM main_admin_db.email_temp_ticket_reg",
+                              (errPay, resultPay) => {
+                                if (errPay) console.log(errPay);
+                                else {
+                                  // node mailer
+                                  const output = `
+      
+                      <h3>Dear ${name} </h3>
+                      <p>${resultPay[0].message}.</p>
+      
+                      <p><b>Ticket ID :</b> ${invoice_num}</p>
+      
+                      Please find attached invoice for your records.</p>
+      
+                      <p>${resultPay[0].caution}.</p>
+      
+                      <p>Thanks & Best Regards</p>
+                      <p>${resultPay[0].signature}</p>
+      
+                      `;
+
+                                  db.query(
+                                    "SELECT * FROM `myveda-db`.email_srv",
+                                    (err, result) => {
+                                      if (err) {
+                                        console.log(err);
+                                      } else {
+                                        console.log(result);
+                                        let host1 = result[0]?.host;
+                                        let port1 = result[0]?.port;
+                                        let user1 = result[0]?.auth_uid;
+                                        let pass1 = result[0]?.auth_pass;
+                                        let fromEmail = result[0]?.from_email;
+                                        let bccEmail = result[0]?.bcc_email;
+                                        let transporter =
+                                          nodemailer.createTransport({
+                                            host: host1,
+                                            port: port1,
+                                            secure: true, // true for 465, false for other p orts
+                                            auth: {
+                                              user: user1, // generated ethereal user
+                                              pass: pass1, // generated ethereal password
+                                            },
+                                          });
+
+                                        // send mail with defined transport object
+                                        let info = transporter.sendMail({
+                                          from: `"" ${fromEmail}`, // sender address
+                                          to: mail, // list of receivers
+                                          subject: resultPay[0].subject, // Subject line
+                                          bcc: bccEmail,
+                                          html: output, // html body
+                                          attachments: [
+                                            {
+                                              filename: "invoice.pdf",
+                                              content: fs.createReadStream(
+                                                `./ticket_log/${mail}_${name}.pdf`,
+                                                pdfBuffer
+                                              ),
+                                            },
+                                          ],
+                                        });
+                                      }
+                                    }
+                                  );
+                                }
+                              }
+                            );
+                          }
+                        }
+                      );
+                    }
+                  }
+                }
+              );
+            }
+          }
+        );
+      }
+    }
+  );
+});

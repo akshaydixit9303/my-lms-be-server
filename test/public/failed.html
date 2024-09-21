@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title></title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      .waiting-loader-2 {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        top: 0;
+        left: 0;
+        display: flex;
+
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+
+      .waiting-loader-2 img {
+        width: 120px;
+      }
+    </style>
+    <div class="waiting-loader-2" style="background: #fff">
+      <div style="text-align: center">
+        <img src="/img/loading.gif" alt="" />
+        <h3>! Just Relax We are Processing your order...</h3>
+      </div>
+
+      <br />
+    </div>
+
+    <script async>
+      const newUrl = "<%= id %>";
+      setTimeout(() => {
+        window.location.replace(
+          "http://localhost:3000/payment/process/cancel/" + newUrl
+        );
+      }, 3000);
+    </script>
+  </body>
+</html>
